@@ -138,7 +138,7 @@ init.values<-function(){
 model3 <- readRDS(file = "modsanscovs3.rds")
 #model 3 has best effective sample sizes and convergence
 
-#Compare lambda estimates -----------------------------------------------
+#Compare parameter estimates ---------------------------------------------------
 
 all.lamb3<-model3$sims.list$lambda
 mu.lambda3<-apply(all.lamb3, 3, mean)
@@ -153,7 +153,7 @@ perc.err<-function(x,y){
 
 lamb.err3<-perc.err(x = mu.lambda3, y = mean.lambdas)
 
-#After looking at means... all 3 have 6-7% error. Smallest error is model 3
+#After looking at means... 6-7% error.
 
 #Compare Z estimates with true values and observation data 
 
@@ -241,6 +241,11 @@ ggplot(data = linears2, aes(x = Trues, y = Estimated))+
 summary(lm(data = linears, Estimated~Trues))
 summary(lm(data = linears2, Estimated~Trues))
 
+#Check community data not included in model: richness and diversity ----------
+
+
+
+
 #Check effects of priors -----------------------------------------------------
 #Check distribution for b0 first, because normal dists are often informative
 #when used for params in a logit link function
@@ -251,5 +256,5 @@ summary(lm(data = linears2, Estimated~Trues))
 betatau <- model3$sims.list$tau.b0
 meantau <- mean(betatau)
 meanstdev <- sqrt(1/meantau)
-#It's about 0.4, should be fine.
+#It's about 0.4, should be fine. Formal check to come.
 

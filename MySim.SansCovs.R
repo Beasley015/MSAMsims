@@ -1,6 +1,6 @@
 #install and load packages ####
-# install.packages("vcdExtra")
 library(vcdExtra)
+library(vegan)
 
 #Prelim data: sites, survey, seed -----------------------------------------------
 J <- 30 #sites
@@ -75,7 +75,7 @@ library(R2OpenBUGS)
 #I loaded a package mid-script. Deal with it.
 
 #Write model in BUGS language
-setwd("c:/users/beasley/dropbox")
+setwd("c:/users/beasley/dropbox/MSAMsims")
 cat("
     model{
 
@@ -241,10 +241,59 @@ ggplot(data = linears2, aes(x = Trues, y = Estimated))+
 summary(lm(data = linears, Estimated~Trues))
 summary(lm(data = linears2, Estimated~Trues))
 
-#Check community data not included in model: richness and diversity ----------
+#Check accuracy of diversity estimates ---------------------------------------
+divers.true <- diversity(t(ns))
+divers.est <- diversity(mean.Z3)
+divers.obs <- diversity(t(maxobs))
 
+divers.err <- perc.err(x = divers.est, y = divers.true)
+summ.divers <- c(min(abs(divers.err)), max(abs(divers.err)), mean(divers.err))
 
+hist(divers.err)
 
+#Mean 2% error, most is less than 5%. 
+#Community summary statistics are more accurate than site or species parameters,
+#which is to be expected.
+
+#What does the observed data look like?
+divers.obs.err <- perc.err(x = divers.obs, y = divers.true)
+summ.divers2 <- c(min(abs(divers.obs.err)), max(abs(divers.obs.err)), 
+                  mean(divers.obs.err))
+
+hist(divers.obs.err)
+
+#So the maximum error is smaller, but there's more variation in error. 
+#Estimated error rates appear to be skewed by an outlier
+
+#Plot true vs estimated vs observed diversity
+divers <- data.frame(Rank = rank(divers.true), divers.true, divers.est, divers.obs)
+
+ggplot(data = divers, aes(x = Rank))+
+  geom_point(aes(y = divers.true, color = "True"))+
+  geom_smooth(aes(y = divers.true, color = "True"))+
+  geom_point(aes(y = divers.est, color = "Estimates"))+
+  geom_smooth(aes(y = divers.est, color = "Estimates"))+
+  geom_point(aes(y = divers.obs, color = "Observed"))+
+  geom_smooth(aes(y = divers.obs, color = "Observed"))+
+  theme_bw()
+
+#Diversity is overestimated by observed data and the model.
+#Abundance of most common species isn't underestimated overall
+#But maybe site-specific abundances are
+
+true.hi.abund <- ns[6,]
+est.hi.abund <- mean.Z3[,6]
+obs.hi.abund <- maxobs[6,]
+
+hi.abund <- data.frame(rank = rank(true.hi.abund), true.hi.abund, est.hi.abund,
+                       obs.hi.abund)
+
+ggplot(data = hi.abund, aes(x = rank))+
+  geom_point(aes(y = true.hi.abund, color = "True"))+
+  geom_point(aes(y = est.hi.abund, color = "Estimated"))+
+  geom_point(aes(y = obs.hi.abund, color = "Observed"))
+  
+#Doesn't look like most abundant species is underestimated. 
 
 #Check effects of priors -----------------------------------------------------
 #Check distribution for b0 first, because normal dists are often informative

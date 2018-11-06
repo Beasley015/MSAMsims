@@ -1,3 +1,8 @@
+##########################################
+# Simulated abundance data for evaluating multi-species abundance model.
+# No covariates, no data augmentation.
+##########################################
+
 #install and load packages ####
 library(vcdExtra)
 library(vegan)
@@ -13,7 +18,7 @@ Ks<-rep(K, J) #Ks is a vector of length J indicationg # of sampling periods per 
 
 set.seed(15) #ensures sim is same each time
 
-#Simulating abundance data
+#Simulating abundance data --------------------------------------------------
 mean.lambdas <- rlogseries(specs, 0.75) 
 #Draw lambdas from a logseries distribution
 
@@ -36,7 +41,7 @@ rowSums(ns) #total abundances
 
 rotate.ns<-t(ns) #I might need an inverted matrix later
 
-#Simulated observation process
+#Simulated observation process ------------------------------------------
 mean.det <- runif(n = specs, min = 0.4, max = 0.8) #simulate mean detection probs
 #These are mid to high detection probabilities
 beta0<-qlogis(mean.det) #put it on logit scale
@@ -132,8 +137,8 @@ init.values<-function(){
 # model3<-bugs(model.file = "abundsanscovs.txt", data = datalist, inits = init.values,
 #              parameters.to.save = params, n.chains = 3, n.burnin = 2000,
 #              n.iter = 15000, debug = T)
-# 
-# saveRDS(model3, file = "modsanscovs3.rds")
+
+saveRDS(model3, file = "modsanscovs3.rds")
 
 model3 <- readRDS(file = "modsanscovs3.rds")
 #model 3 has best effective sample sizes and convergence
@@ -294,16 +299,4 @@ ggplot(data = hi.abund, aes(x = rank))+
   geom_point(aes(y = obs.hi.abund, color = "Observed"))
   
 #Doesn't look like most abundant species is underestimated. 
-
-#Check effects of priors -----------------------------------------------------
-#Check distribution for b0 first, because normal dists are often informative
-#when used for params in a logit link function
-
-#modify BUGS script slightly so stdev can be changed
-
-#First, look at stdev for the original model. >2 is usually uninformative
-betatau <- model3$sims.list$tau.b0
-meantau <- mean(betatau)
-meanstdev <- sqrt(1/meantau)
-#It's about 0.4, should be fine. Formal check to come.
-
+#Don't know what's happening there

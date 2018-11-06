@@ -7,3 +7,5 @@ Currently, the following scripts are in the repository:
 * MySim.SansCovs.R - The base model. No covariates or data augmentation.
   - abundsanscovs.txt - BUGS script for base model
   - modsanscovs3.rds - output of base model
+
+* SansCovsAugmented.R - No covariates, but includes data augmentation to account for 2 nondetected species.

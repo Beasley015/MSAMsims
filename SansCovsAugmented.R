@@ -76,17 +76,16 @@ for(b in 1:specs){
 obsdata<-array(as.numeric(unlist(L)), dim=c(J, K, specs-2)) 
 #Nondetected species were removed from observation data
 
-#Create an observation matrix for later comparisons
-maxobs <- apply(obsdata, c(1,3), max)
-
 #Number of observed species
-n <- ncol(maxobs)
+n <- specs-2
 
 #Augment data with all-zero matrices
 n.aug <- 3
 augmats <- array(0, dim = c(J, K, n.aug))
 
 augdata <- abind(obsdata, augmats, along = 3)
+
+maxobs <- apply(augdata, c(1,3), max)
 
 #Write model and send to Gibbs sampler ------------------------------------------
 cat("
@@ -122,8 +121,9 @@ cat("
     
     #Loop within loops for estimating det of spec i at site j at time k
     for(k in 1:K[j]){
-    logit(p[j,k,i]) <- b0[i]
-    obsdata[j,k,i] ~ dbin(p[j,k,i], Z[j,i])
+    p[j,k,i] <- b0[i]
+    logit.p[j,k,i] <- 1 / (1 + exp(-p[j,k,i]))
+    obsdata[j,k,i] ~ dbin(logit.p[j,k,i], Z[j,i])
     }
     }
     }
@@ -144,11 +144,13 @@ init.values<-function(){
        w=c(rep(1,n), rbinom(n = n.aug,size=1,prob=omega.guess)),
        a0 = rnorm(n = (n+n.aug), mean = mean(alpha0)),
        b0 = rnorm(n = (n+n.aug), mean = runif(1,0,1)),
-       Z = matrix(rpois(n = J*(n+n.aug), lambda = lambda.guess), nrow = J, 
-                  ncol = n+n.aug)
+       Z = maxobs
   )
 }
 
-augmodel <- bugs(model.file = "augmentsanscovs.txt", data = datalist, n.chains = 3,
-                 parameters.to.save = params, inits = init.values, n.burnin = 10, 
-                 n.iter = 50, debug = T)
+# augmodel <- bugs(model.file = "augmentsanscovs.txt", data = datalist, n.chains = 3,
+#                  parameters.to.save = params, inits = init.values, n.burnin = 4000, 
+#                  n.iter = 6000, debug = T)
+# saveRDS(augmodel, file = "augsanscovs.RDS")
+
+augmodel <- readRDS(file = "augsanscovs.RDS")

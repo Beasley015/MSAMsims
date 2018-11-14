@@ -31,8 +31,9 @@
     
     #Loop within loops for estimating det of spec i at site j at time k
     for(k in 1:K[j]){
-    logit(p[j,k,i]) <- b0[i]
-    obsdata[j,k,i] ~ dbin(p[j,k,i], Z[j,i])
+    p[j,k,i] <- b0[i]
+    logit.p[j,k,i] <- 1 / (1 + exp(-p[j,k,i]))
+    obsdata[j,k,i] ~ dbin(logit.p[j,k,i], Z[j,i])
     }
     }
     }

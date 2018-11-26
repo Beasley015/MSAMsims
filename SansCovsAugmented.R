@@ -1,7 +1,8 @@
 ###############################
 # Simulated abundance data for evaluating multi-species abundance model.
 # No covariates.
-# Includes data augmentation to model species that were never detected during sampling.
+# Includes data augmentation to model species that were never detected 
+# during sampling.
 ###############################
 
 #Setup -------------------------------------------------------------------------
@@ -9,6 +10,7 @@ library(vcdExtra)
 library(vegan)
 library(R2OpenBUGS)
 library(abind)
+library(tidyverse)
 
 setwd("c:/users/beasley/dropbox/MSAMsims")
 
@@ -17,9 +19,10 @@ set.seed(15) #ensures sim is same each time
 #Prelim data: sites, survey, seed -----------------------------------------------
 J <- 30 #sites
 K <- 3 #surveys per site
-specs<-12 #Number of species
+specs<-11 #Number of species
 
-Ks<-rep(K, J) #Ks is a vector of length J indicationg # of sampling periods per site
+Ks<-rep(K, J) 
+#Ks is a vector of length J indicationg # of sampling periods per site
 
 #simulated values for covs would go here
 
@@ -47,9 +50,9 @@ rowSums(ns) #total abundances
 rotate.ns<-t(ns) #I might need an inverted matrix later
 
 #Simulated observation process ------------------------------------------
-some.det <- runif(n = specs-2, min = 0.4, max = 0.8)#simulate mean detection probs
-#These are mid to high detection probabilities
-no.det <- rep(0, 2)
+some.det <- runif(n = specs-1, min = 0, max = 0.6)#simulate mean detection probs
+#These are fairly low det probs
+no.det <- 0
 #Two species will not be detected
 mean.det <- c(some.det, no.det)
 
@@ -73,14 +76,14 @@ for(b in 1:specs){
 #I suppose I could make that a function but I'm lazy
 
 #Smash it into array
-obsdata<-array(as.numeric(unlist(L)), dim=c(J, K, specs-2)) 
+obsdata<-array(as.numeric(unlist(L)), dim=c(J, K, specs-1)) 
 #Nondetected species were removed from observation data
 
 #Number of observed species
-n <- specs-2
+n <- length(some.det)
 
 #Augment data with all-zero matrices
-n.aug <- 3
+n.aug <- 2
 augmats <- array(0, dim = c(J, K, n.aug))
 
 augdata <- abind(obsdata, augmats, along = 3)
@@ -127,6 +130,11 @@ cat("
     }
     }
     }
+
+    #Estimate total richness (N) by adding observed (n) and unobserved (n0) species
+    n0<-sum(w[(n+1):(n+n.aug)])
+    N<-n+n0
+
     }
     ", file = "augmentsanscovs.txt")
 
@@ -134,7 +142,7 @@ cat("
 datalist<-list(n = n, n.aug = n.aug, J=J, K=Ks, obsdata=augdata)
 
 #Specify parameters to return to R
-params<-list('Z','lambda','a0','b0', 'mu.a0', 'mu.b0', 'tau.a0', 'tau.b0')
+params<-list('Z','lambda','a0','b0', 'mu.a0', 'mu.b0', 'tau.a0', 'tau.b0', 'N')
 
 #Generate initial values
 init.values<-function(){
@@ -149,8 +157,15 @@ init.values<-function(){
 }
 
 # augmodel <- bugs(model.file = "augmentsanscovs.txt", data = datalist, n.chains = 3,
-#                  parameters.to.save = params, inits = init.values, n.burnin = 4000, 
-#                  n.iter = 6000, debug = T)
+#                  parameters.to.save = params, inits = init.values, 
+#                  n.burnin = 5000, n.iter = 10000, debug = T)
 # saveRDS(augmodel, file = "augsanscovs.RDS")
 
 augmodel <- readRDS(file = "augsanscovs.RDS")
+
+#Model evaluation: regional and site-level richness ----------------------------
+Ns <- augmodel$sims.list$N
+mean(Ns); quantile(Ns, c(0.025, 0.25, 0.75, 0.975))
+
+ggplot()+
+  geom_histogram(aes(x = Ns), binwidth = 1)

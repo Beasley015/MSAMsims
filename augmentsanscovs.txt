@@ -37,5 +37,10 @@
     }
     }
     }
+
+    #Estimate total richness (N) by adding observed (n) and unobserved (n0) species
+    n0<-sum(w[(n+1):(n+n.aug)])
+    N<-n+n0
+
     }
     

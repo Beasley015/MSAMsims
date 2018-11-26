@@ -9,3 +9,5 @@ Currently, the following scripts are in the repository:
   - modsanscovs3.rds - output of base model
 
 * SansCovsAugmented.R - No covariates, but includes data augmentation to account for 2 nondetected species.
+  - augmentsanscovs.txt - BUGS script
+  - augsanscovs.rds - output of model with augmented dataset

@@ -28,6 +28,7 @@ Ks<-rep(K, J)
 
 #Simulating abundance data --------------------------------------------------
 mean.lambdas <- rlogseries(specs, 0.75) 
+mean.lambdas[11] <- 0.5
 #Draw lambdas from a logseries distribution
 
 alpha0 <- log(mean.lambdas) #log-scale intercept
@@ -50,10 +51,10 @@ rowSums(ns) #total abundances
 rotate.ns<-t(ns) #I might need an inverted matrix later
 
 #Simulated observation process ------------------------------------------
-some.det <- runif(n = specs-1, min = 0, max = 0.6)#simulate mean detection probs
-#These are fairly low det probs
+some.det <- runif(n = specs-1, min = 0.4, max = 0.8)#simulate mean detection probs
+#These are mid to high detection probs
 no.det <- 0
-#Two species will not be detected
+#One species will not be detected
 mean.det <- c(some.det, no.det)
 
 beta0<-qlogis(mean.det) #put it on logit scale
@@ -157,8 +158,8 @@ init.values<-function(){
 }
 
 # augmodel <- bugs(model.file = "augmentsanscovs.txt", data = datalist, n.chains = 3,
-#                  parameters.to.save = params, inits = init.values, 
-#                  n.burnin = 5000, n.iter = 10000, debug = T)
+#                  parameters.to.save = params, inits = init.values,
+#                  n.burnin = 5000, n.iter = 8000, debug = T)
 # saveRDS(augmodel, file = "augsanscovs.RDS")
 
 augmodel <- readRDS(file = "augsanscovs.RDS")
@@ -242,3 +243,6 @@ ggplot(data = site.comp, aes(x = True, y = Estimated))+
   geom_point()+
   geom_smooth()
 
+#It looks like I have a tradeoff when it comes to det probabilities
+#If they're low, the model overestimates abundance (still closer than obs)
+#If they're high, the model won't include the nondetected species

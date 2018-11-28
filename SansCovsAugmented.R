@@ -163,9 +163,82 @@ init.values<-function(){
 
 augmodel <- readRDS(file = "augsanscovs.RDS")
 
-#Model evaluation: regional and site-level richness ----------------------------
+# Model evaluation: regional and site-level richness ----------------------------
 Ns <- augmodel$sims.list$N
 mean(Ns); quantile(Ns, c(0.025, 0.25, 0.75, 0.975))
 
 ggplot()+
   geom_histogram(aes(x = Ns), binwidth = 1)
+
+# Model evaluation: posterior distributions -------------------------------------
+post.abund <- augmodel$sims.list$mu.a0
+hist(post.abund)
+
+post.det <- augmodel$sims.list$mu.b0
+hist(post.det)
+#detection isn't bimodal, so that's good
+
+# Compare observed, estimated, and true abundance ------------------------------
+Zs <- augmodel$sims.list$Z
+
+#Species
+spec.abunds <- apply(Zs, c(1,3), sum)
+spec.mean <- apply(spec.abunds[,-12], 2, mean)
+spec.obs <- apply(t(maxobs[,-12]), 1, sum)
+spec.true <- rowSums(ns)
+
+spec.comp <- data.frame(Rank = rank(spec.true), Estimated = spec.mean, 
+                        Observed = spec.obs, True = spec.true)
+
+ggplot(data = spec.comp, aes(x = Rank))+
+  geom_point(aes(y = Estimated, color = "Estimated"))+
+  geom_smooth(aes(y = Estimated, fill = "Estimated", color = "Estimated"),
+              show.legend = F, alpha = 0.25)+
+  geom_point(aes(y = Observed, color = "Observed"))+
+  geom_smooth(aes(y = Observed, fill = "Observed", color = "Observed"), alpha = 0.25)+
+  geom_point(aes(y = True, color = "True"))+
+  geom_smooth(aes(y = True, fill = "True", color = "True"), alpha = 0.25)+
+  scale_fill_manual(breaks = c("Estimated", "Observed", "True"),
+                    values = c("blue", "black", "red"), guide = F)+
+  scale_color_manual(breaks = c("Estimated", "Observed", "True"),
+                     values = c("blue", "black", "red"))+
+  theme_bw()
+
+#Sites
+site.abund <- apply(Zs, c(1,2), sum)
+site.mean <- apply(site.abund, 2, mean)
+site.true <- colSums(ns)
+site.obs <- apply(t(maxobs), 2, sum)
+
+site.comp <- data.frame(Rank = rank(site.true), True = site.true, 
+                        Observed = site.obs, Estimated = site.mean)
+
+ggplot(data = site.comp, aes(x = Rank))+
+  geom_point(aes(y = True, color = "True"))+
+  geom_smooth(aes(y = True, color = "True", fill = "True"))+
+  geom_point(aes(y = Observed, color = "Observed"))+
+  geom_smooth(aes(y = Observed, color = "Observed", fill = "Observed"))+
+  geom_point(aes(y = Estimated, color = "Estimated"))+
+  geom_smooth(aes(y = Estimated, color = "Estimated", fill = "Estimated"))+
+  scale_color_manual(breaks = c("True", "Estimated", "Observed"), values = 
+                       c("blue", "black", "red"))+
+  scale_fill_manual(breaks = c("True", "Estimated", "Observed"), values = 
+                      c("blue", "black", "red"), guide = F)+
+  theme_bw()
+
+#Make sure estimates aren't biased at high or low abundances --------------------
+#By species
+specmod <- lm(data = spec.comp, Estimated~True)
+
+ggplot(data = spec.comp, aes(x = True, y = Estimated))+
+  geom_point()+
+  geom_smooth()
+#Not bad
+
+#By site
+sitemod <- lm(data = site.comp, Estimated~True)
+
+ggplot(data = site.comp, aes(x = True, y = Estimated))+
+  geom_point()+
+  geom_smooth()
+

@@ -8,8 +8,8 @@ Currently, the following scripts are in the repository:
   - abundsanscovs.txt - BUGS script for base model
   - modsanscovs3.rds - output of base model
 
-* SansCovsAugmented.R - No covariates, but includes data augmentation to account for 2 nondetected species.
+* SansCovsAugmented.R - No covariates, but includes data augmentation to account for 1 nondetected species.
   - augmentsanscovs.txt - BUGS script
   - augsanscovs.rds - output of model with augmented dataset
   
-* SimWithCovs.R - Currently non-functioning script for a model with covariates but without data augmentation
+* SimWithCovs.R - Model with covariates but without data augmentation

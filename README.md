@@ -13,3 +13,5 @@ Currently, the following scripts are in the repository:
   - augsanscovs.rds - output of model with augmented dataset
   
 * SimWithCovs.R - Model with covariates but without data augmentation
+  - abundmitcovs.txt - BUGS script
+  - covmodel.RDS - output of model with covariates

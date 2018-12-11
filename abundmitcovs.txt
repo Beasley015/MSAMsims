@@ -1,0 +1,51 @@
+
+    model{
+    
+    #Define prior distributions
+    
+    #Intercepts
+    a0.mean ~ dnorm(0,0.001)
+    sigma.a0 ~ dunif(0,10)
+    tau.a0 <- 1/(sigma.a0*sigma.a0)
+    
+    b0.mean ~ dnorm(0,0.001)
+    sigma.b0 ~ dunif(0,10)
+    tau.b0 <- 1/(sigma.b0*sigma.b0)
+
+    #Covs
+    a1.mean ~ dnorm(0, 0.1)
+    sigma.a1 ~ dunif(0,10)
+    tau.a1 <- 1/(sigma.a1*sigma.a1)
+
+    a2.mean ~ dnorm(0, 0.1)
+    sigma.a2 ~ dunif(0,10)
+    tau.a2 <- 1/(sigma.a2*sigma.a2)
+
+    b1.mean ~ dnorm(0, 0.1)
+    sigma.b1 ~ dunif(0,10)
+    tau.b1 <- 1/(sigma.b1*sigma.b1)
+    
+    for(i in 1:specs){
+    #create priors from distributions above
+    a0[i] ~ dnorm(a0.mean, tau.a0)
+    a1[i] ~ dnorm(a1.mean, tau.a1)
+    a2[i] ~ dnorm(a2.mean, tau.a2)
+    
+    b0[i] ~ dnorm(b0.mean, tau.b0)
+    b1[i] ~ dnorm(b1.mean, tau.b1)
+    
+    #Loop within a loop to estimate abund of spec i at site j
+    for(j in 1:J){
+    log(lambda[j,i]) <- a0[i] + a1[i]*cov1[j] + a2[i]*cov2[j]
+    Z[j,i] ~ dpois(lambda[j,i])
+    
+    #Loop within loops for estimating det of spec i at site j at time k
+    for(k in 1:K[j]){
+    p[j,k,i] <- b0[i] + b1[i]*detcov[j,k]
+    logit.p[j,k,i] <- 1 / (1 + exp(-p[j,k,i]))
+    obsdata[j,k,i] ~ dbin(logit.p[j,k,i], Z[j,i])
+    }
+    }
+    }
+    }
+    

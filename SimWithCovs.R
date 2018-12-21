@@ -20,15 +20,18 @@ Ks<-rep(K, J) #Ks is a vector of length J indicationg # of sampling periods per 
 
 set.seed(15) #insures sim is same each time
 
-#Simulating abundance data ---------------------------------------------------
-mean.lambdas <- rlogseries(n = specs, prob = 0.75)
-
-#create covariates
+#create abundance covariates
 cov1<-rnorm(n = J, mean = 10, sd = 5)
 cov1scale <- as.vector(scale(cov1))
 
 cov2 <- rnorm(n = J, mean = 5, sd = 1)
 cov2scale <- as.vector(scale(cov2))
+
+#detection
+detcov <- matrix(runif(J*K, 0, 10), nrow = J, ncol = K)
+
+#Simulating abundance data ---------------------------------------------------
+mean.lambdas <- rlogseries(n = specs, prob = 0.75)
 
 #create responses to covariates
 alpha0 <- log(mean.lambdas) #log-scale intercept
@@ -66,10 +69,8 @@ mean.det <- runif(n = specs, min = 0.4, max = 0.9) #simulate mean detection prob
 #Detection intercept and cov responses
 beta0<-qlogis(mean.det) #put it on logit scale
 
-#Detection cov, but it does not affect detectability
+#Detection cov does not affect detectability
 beta1 <- rnorm(n = specs, mean = 0, sd = 0.01)
-
-detcov <- matrix(runif(J*K, 0, 10), nrow = J, ncol = K)
 
 #Logit link function
 logit.p <- array(NA, dim = c(J, K, specs))

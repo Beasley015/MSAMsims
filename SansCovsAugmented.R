@@ -28,7 +28,7 @@ Ks<-rep(K, J)
 
 #Simulating abundance data --------------------------------------------------
 mean.lambdas <- rlogseries(specs, 0.75) 
-mean.lambdas[11] <- 0.5
+mean.lambdas[11] <- 0.5 #nondetected species should have low abundance for realism
 #Draw lambdas from a logseries distribution
 
 alpha0 <- log(mean.lambdas) #log-scale intercept

@@ -157,8 +157,8 @@ init.values<-function(){
   )
 }
 
-# augmodel <- bugs(model.file = "augmentsanscovs.txt", data = datalist, n.chains = 3,
-#                  parameters.to.save = params, inits = init.values,
+# augmodel <- bugs(model.file = "augmentsanscovs.txt", data = datalist, 
+#                  n.chains = 3, parameters.to.save = params, inits = init.values,
 #                  n.burnin = 5000, n.iter = 8000, debug = T)
 # saveRDS(augmodel, file = "augsanscovs.RDS")
 

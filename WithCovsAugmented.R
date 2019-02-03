@@ -88,12 +88,17 @@ for(b in 1:specs){
 }
 
 #Smash it into array
-obsdata<-array(as.numeric(unlist(L)), dim=c(J, K, specs-1))
+obsdata<-array(as.numeric(unlist(L)), dim=c(J, K, specs))
 
 #Sanity check: convert obs data into abundance matrix
 maxobs<-apply(obsdata, c(1,3), max)
 print(maxobs)
 #looks fine
+
+#Remove non-detected species
+nondet <- which(apply(obsdata, 3, sum) == 0)
+
+new.obs <- obsdata[,,-nondet]
 
 #Number of observed species
 n <- specs - 1
@@ -102,7 +107,7 @@ n <- specs - 1
 n.aug <- 1
 augmats <- array(0, dim = c(J, K, n.aug))
 
-augdata <- abind(obsdata, augmats, along = 3)
+augdata <- abind(new.obs, augmats, along = 3)
 
 maxobs <- apply(augdata, c(1,3), max)
 

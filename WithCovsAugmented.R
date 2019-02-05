@@ -194,7 +194,7 @@ init.values<-function(){
 }
 
 model <- bugs(model.file = "augmitcovs.txt", data = datalist, n.chains = 3,
-              parameters.to.save = params, inits = init.values, n.burnin = 7500,
+              parameters.to.save = params, inits = init.values, n.burnin = 10000,
               n.iter = 15000, debug = T)
 
 saveRDS(model, file = "modaugcovs.rds")

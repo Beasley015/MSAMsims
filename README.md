@@ -14,7 +14,6 @@ Currently, the following scripts are in the repository:
   
 * SimWithCovs.R - Model with covariates but without data augmentation
   - abundmitcovs.txt - BUGS script
-  - covmodel.RDS - output of model with covariates
 
 * WithCovsAugmented.R - Model with covariates and data augmentation for 1 nondetected species.
   - augmitcovs.txt - BUGS script

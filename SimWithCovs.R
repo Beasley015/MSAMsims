@@ -5,11 +5,11 @@
 
 #Load packages
 library(vcdExtra)
-library(TeachingDemos)
-library(ggplot2)
+library(tidyverse)
 library(R2OpenBUGS)
+library(agricolae)
 
-setwd("c:/users/beasley/dropbox/MSAMsims")
+setwd("c:/users/beasley/documents/MSAMsims")
 
 #Global variables: sites, survey, seed ----------------------------------------
 J <- 30 #sites
@@ -31,7 +31,7 @@ cov2scale <- as.vector(scale(cov2))
 detcov <- matrix(runif(J*K, 0, 10), nrow = J, ncol = K)
 
 #Simulating abundance data ---------------------------------------------------
-mean.lambdas <- rlogseries(n = specs, prob = 0.75)
+mean.lambdas <- runif(n = 10, min = 0.25, max = 2.5)
 
 #create responses to covariates
 alpha0 <- log(mean.lambdas) #log-scale intercept
@@ -40,7 +40,7 @@ alpha0 <- log(mean.lambdas) #log-scale intercept
 alpha1 <- rep(-1, specs)
 
 #Only two species respond
-alpha2 <- c(rep(2, 2), rnorm(n = specs-2, mean = 0, sd = 0.1))
+alpha2 <- c(rep(1, 2), rnorm(n = specs-2, mean = 0, sd = 0.1))
 
 #Put covs and responses in log link function
 log.lambdas <- matrix(NA, nrow = specs, ncol = J)
@@ -63,8 +63,19 @@ rowSums(ns) #total abundances
 rotate.ns<-t(ns)
 
 #Simulated observation process --------------------------------------------
-mean.det <- runif(n = specs, min = 0.4, max = 0.9) #simulate mean detection probs
-#These are mid to high detection values
+
+#Wide range of detection values
+# mean.det <- runif(n = specs, min = 0.1, max = 0.9) #simulate mean detection probs
+
+#Low detection values
+# mean.det <- runif(n = specs, min = 0.1, max = 0.5)
+
+#Mid detection values 
+mean.det <- runif(n = specs, min = 0.3, max = 0.7)
+
+#High detection values
+# mean.det <- runif(n = specs, min = 0.5, max = 0.9)
+
 
 #Detection intercept and cov responses
 beta0<-qlogis(mean.det) #put it on logit scale
@@ -168,81 +179,121 @@ init.values<-function(){
 }
 
 #Send model to Gibbs sampler 
-mod1<-bugs(model.file = "abundmitcovs.txt", data = datalist, inits = init.values,
-            parameters.to.save = params, n.chains = 3, n.burnin = 2000,
-            n.iter = 6000, debug = T)
+# mod1<-bugs(model.file = "abundmitcovs.txt", data = datalist, inits = init.values,
+#             parameters.to.save = params, n.chains = 3, n.burnin = 6000,
+#             n.iter = 12000, debug = T)
 
-saveRDS(mod1, file = "covmodel.RDS")
+# saveRDS(mod1, file = "ranged_det.RDS")
+# saveRDS(mod1, file = "lo_det.RDS")
+# saveRDS(mod1, file = "mid_det.RDS")
+# saveRDS(mod1, file = "hi_det.RDS")
 
-mod1 <- readRDS(file = "covmodel.RDS")
+rangedmod <- readRDS(file = "ranged_det.RDS")
+lomod <- readRDS(file = "lo_det.RDS")
+midmod <- readRDS(file = "mid_det.RDS")
+himod <- readRDS(file = "hi_det.RDS")
 
-#Test model accuracy -------------------------------------------------------
-a1s <- mod1$sims.list$a1
-mean.a1 <- apply(a1s, 2, mean)
-lo.a1 <- apply(a1s, 2, quantile, 0.025)
-hi.a1 <- apply(a1s, 2, quantile, 0.975)
+# Model evaluation: abundance estimates --------------------------------------
+#Get Z matrices from model objects
+get.zs <- function(x){
+  y <- x$sims.list$Z
+  return(y)
+}
 
-ggplot()+
-  geom_point(aes(x = 1:10, y = alpha1), color = "red")+
-  geom_point(aes(x = 1:10, y = mean.a1))+
-  geom_errorbar(aes(x = 1:10, ymin = lo.a1, ymax = hi.a1))
+rangeZ <- get.zs(x = rangedmod)
+loZ <- get.zs(x = lomod)
+midZ <- get.zs(x = midmod)
+hiZ <- get.zs(x = himod)
 
-a2s <- mod1$sims.list$a2
-mean.a2 <- apply(a2s, 2, mean)
-lo.a2 <- apply(a2s, 2, quantile, 0.025)
-hi.a2 <- apply(a2s, 2, quantile, 0.975)
+#Get estimated site-level abundances
+site.abunds <- function(x){
+  y <- apply(x, c(2,3), mean)
+  y2 <- rowSums(y)
+  return(y2)
+}
 
-ggplot()+
-  geom_point(aes(x = 1:10, y = alpha2), color = "red")+
-  geom_point(aes(x = 1:10, y = mean.a2))+
-  geom_errorbar(aes(x = 1:10, ymin = lo.a2, ymax = hi.a2))
+range.abund <- site.abunds(rangeZ)
+lo.abund <- site.abunds(loZ)
+mid.abund <- site.abunds(midZ)
+hi.abund <- site.abunds(hiZ)
 
-b1s <- mod1$sims.list$b1
-mean.b1 <- apply(b1s, 2, mean)
-lo.b1 <- apply(b1s, 2, quantile, 0.025)
-hi.b1 <- apply(b1s, 2, quantile, 0.975)
+#Put it in a data frame
+abunds <- data.frame(True = colSums(ns), Rank = rank(colSums(ns)), Varied = range.abund,
+                     Low = lo.abund, Mid = mid.abund, High = hi.abund, 
+                     Observed = rowSums(maxobs))
 
-ggplot()+
-  geom_point(aes(x = 1:10, y = beta1), color = "red")+
-  geom_point(aes(x = 1:10, y = mean.b1))+
-  geom_errorbar(aes(x = 1:10, ymin = lo.b1, ymax = hi.b1))
-
-#Test model assumptions ----------------------------------------------------
-#Is estimated abundance closer to the true value than observed?
-Z <- mod1$sims.list$Z
-mean.Z <- apply(Z, c(2,3), mean)
-
-site.mean <- apply(mean.Z, 1, sum)
-site.true <- colSums(ns)
-site.obs <- apply(maxobs, 1, sum)
-
-site.comp <- data.frame(rank(site.true), site.mean, site.obs, site.true)
-colnames(site.comp) <- c("sites.ranked", "site.mean", "site.obs", "site.true")
-
-ggplot(data = site.comp, aes(x = sites.ranked))+
-  geom_point(aes(y = site.mean, fill = "Estimated", color = "Estimated"))+
-  geom_smooth(aes(y = site.mean, fill = "Estimated", color = "Estimated"),
-              show.legend = F)+
-  geom_point(aes(y = site.obs, fill = "Observed", color = "Observed"))+
-  geom_smooth(aes(y = site.obs, fill = "Observed", color = "Observed"),
-              show.legend = F)+
-  geom_point(aes(y = site.true, fill = "True", color = "True"))+
-  geom_smooth(aes(y = site.true, fill = "True", color = "True"), show.legend= F)+
-  scale_fill_manual(breaks = c("Estimated", "Observed", "True"),
-                    values = c("blue", "black", "red"), guide = F)+
-  scale_color_manual(breaks = c("Estimated", "Observed", "True"),
-                     values = c("blue", "black", "red"))+
+#Plot it
+ggplot(data = abunds, aes(x = Rank))+
+  geom_point(aes(y = True, color = "True"))+
+  geom_smooth(aes(y = True, color = "True", fill = "True"), alpha = 0.2)+
+  geom_point(aes(y = Varied, color = "Varied"))+
+  geom_smooth(aes(y = Varied, color = "Varied", fill = "Varied"), alpha = 0.2)+
+  geom_point(aes(y = Low, color = "Low"))+
+  geom_smooth(aes(y = Low, color = "Low", fill = "Low"), alpha = 0.2)+
+  geom_point(aes(y = Mid, color = "Mid"))+
+  geom_smooth(aes(y = Mid, color = "Mid", fill = "Mid"), alpha = 0.2)+
+  geom_point(aes(y = High, color = "High"))+
+  geom_smooth(aes(y = High, color = "High", fill = "High"), alpha = 0.2)+
+  geom_point(aes(y = Observed, color = "Observed"))+
+  geom_smooth(aes(y = Observed, color = "Observed"), alpha = 0.2)+
+  scale_color_viridis_d()+
+  scale_fill_viridis_d(guide = F)+
   labs(x = "Sites (Ranked)", y = "Abundance")+
   theme_bw()+
   theme(legend.title = element_blank())
 
-#Is there a 1:1 relationship between estimated and true abundance?
-linears <- data.frame(as.vector(t(ns)),as.vector(apply(Z, c(2,3), mean)))
-colnames(linears) <- c("True", "Estimated")
+#Are there differences between estimates?
+abund.melt <- gather(abunds, c(True, Varied:Observed), key = "Source", value = "Abund")
 
-ggplot(data = linears, aes(x = True, y = Estimated))+
-  geom_point()+
-  geom_smooth(method = 'lm')+
-  theme_bw()
+abund.aov <- aov(data = abund.melt, Abund ~ Source + Rank)
+summary(abund.aov) #Mostly varies between sites but det plays a role
 
-summary(lm(data = linears, Estimated~True))
+#Which estimates are the same?
+abund.diffs <- HSD.test(y = abund.aov, trt = "Source")
+abund.diffs$groups #Observed is different than true, all others not sig. different
+
+# Model evaluation: covariate significance -----------------------------------
+get.a1 <- function(x){
+  y <- x$sims.list$a1
+  y2 <- as.data.frame(y)
+  colnames(y2) <- c(1:10)
+  return(y2)
+}
+
+range.a1 <- get.a1(rangedmod)
+lo.a1 <- get.a1(lomod)
+mid.a1 <- get.a1(midmod)
+hi.a1 <- get.a1(himod)
+
+long.a1 <- function(x, source){
+  y <- gather(x, key = "Species", value = "a1")
+  y$Source = source
+  return(y)
+}
+
+range.a1.long <- long.a1(x = range.a1, source = "Varied")
+lo.a1.long <- long.a1(x = lo.a1, source = "Low")
+mid.a1.long <- long.a1(x = mid.a1, source = "Mid")
+hi.a1.long <- long.a1(x = hi.a1, source = "High")
+
+all.a1 <- as.data.frame(rbind(range.a1.long, lo.a1.long, mid.a1.long, hi.a1.long))
+
+all.a1 %>%
+  group_by(Source, Species)%>%
+  summarise(mean = mean(a1), quant025 = quantile(a1, 0.025), 
+                    quant975 = quantile(a1, 0.975)) %>%
+                    {. ->> sum.a1}
+
+ggplot(data = sum.a1, aes(x = Species, color = Source))+
+  geom_point(aes(y = mean))+
+  geom_errorbar(aes(ymin = quant025, ymax = quant975))+
+  scale_color_viridis_d()+
+  geom_hline(aes(yintercept = 0), linetype = "dashed")+
+  geom_hline(aes(yintercept = -1), linetype = "dashed", color = "red")+
+  labs(y = "Alpha 1")+
+  theme_bw()+
+  theme(axis.title.x = element_blank())
+  
+# Model evaluation: relationship between true and estimated data -------------
+
+

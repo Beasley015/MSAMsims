@@ -201,7 +201,7 @@ saveRDS(model, file = "modaugcovs.rds")
 
 model <- readRDS(file = "modaugcovs.rds")
 
-# Model evaluation: abundance/richness/diversity -----------------------------
+# Model evaluation: site-level abundance/richness/diversity ---------------------------
 #Regional richness
 Ns <- model$sims.list$N
 mean(Ns); quantile(Ns, c(0.025, 0.25, 0.75, 0.975))
@@ -329,6 +329,65 @@ summary(divers.aov) #Yep, there are differences
 divers.groups <- TukeyHSD(divers.aov, which = "Source")
 plot(divers.groups)
 
+# Model evaluation: species abundances -----------------------------------------
+specest <- apply(Zs, 3, mean)
+spectru <- apply(ns, 1, mean)
+specobs <- apply(maxobs, 2, mean)
+
+specabunds <- data.frame(Tru = spectru, Est = specest, Obs = specobs, 
+                         Rank = rank(spectru))
+
+ggplot(data = specabunds, aes(x = Rank))+
+  geom_point(aes(y = spectru, color = "True"))+
+  geom_point(aes(y = specest, color = "Estimated"))+
+  geom_point(aes(y = specobs, color = "Observed"))+
+  scale_color_manual(breaks = c("True", "Estimated", "Observed"),
+                    values = c("black", "blue", "red"))+
+  labs(x = "Species", y = "Abundance")+
+  theme_bw()+
+  theme(legend.title = element_blank())
+#Well that's interesting. When the observed data deviates greatly from the true value,
+#the estimate tends to be closer to the observed data
+
+#Then again, it could be because the model is evaluating abundances by site
+#Not total species abundance, and not richness/diversity
+
+#Model evaluation: percent errors ----------------------------------------------
+#Estimate error and detection probabilities
+perc.error <- abs((specabunds$Tru-specabunds$Est)/specabunds$Tru)
+
+summary(lm(perc.error~mean.det))
+
+ggplot(mapping = aes(x = mean.det, y = perc.error))+
+  geom_point()+
+  theme_bw()
+
+#Observation error and estimated error
+perc.error2 <- abs((specabunds$Tru-specabunds$Obs)/specabunds$Tru)
+
+summary(lm(perc.error~perc.error2))
+
+ggplot(mapping = aes(x = perc.error2, y = perc.error))+
+  geom_point()+
+  theme_bw()
+
+#Observation error and detection probabilities
+summary(lm(perc.error2~mean.det))
+
+ggplot(mapping = aes(x = mean.det, y = perc.error2))+
+  geom_point()+
+  theme_bw()
+
+#Model evaluation: relationship between true and estimated abundance -----------
+abundmod <- lm(data = abund, Estimated~True)
+summary(abundmod)
+
+ggplot(data = abund, aes(x = True, y = Estimated))+
+  geom_point()+
+  geom_smooth(fill = "black", color = "black")+
+  theme_bw()
+#Yas this looks great
+
 # Model evaluation: covariate estimates ----------------------------------------
 #Abundance covariate
 alpha1.est <- model$sims.list$a1
@@ -361,3 +420,4 @@ ggplot(data = beta1s, aes(x = seq(1:specs)))+
   geom_errorbar(aes(ymin = Lo, ymax = Hi))+
   geom_hline(aes(yintercept = 0), linetype = "dashed")+
   theme_bw()
+

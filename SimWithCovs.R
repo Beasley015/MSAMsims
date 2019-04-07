@@ -8,6 +8,7 @@ library(vcdExtra)
 library(tidyverse)
 library(R2OpenBUGS)
 library(agricolae)
+library(ggpubr)
 
 setwd("c:/users/beasley/documents/MSAMsims")
 
@@ -224,23 +225,28 @@ abunds <- data.frame(True = colSums(ns), Rank = rank(colSums(ns)), Varied = rang
 
 #Plot it
 ggplot(data = abunds, aes(x = Rank))+
-  geom_point(aes(y = True, color = "True"))+
+  geom_point(aes(y = True, color = "True"), size = 3)+
   geom_smooth(aes(y = True, color = "True", fill = "True"), alpha = 0.2)+
   geom_point(aes(y = Varied, color = "Varied"))+
-  geom_smooth(aes(y = Varied, color = "Varied", fill = "Varied"), alpha = 0.2)+
-  geom_point(aes(y = Low, color = "Low"))+
-  geom_smooth(aes(y = Low, color = "Low", fill = "Low"), alpha = 0.2)+
-  geom_point(aes(y = Mid, color = "Mid"))+
-  geom_smooth(aes(y = Mid, color = "Mid", fill = "Mid"), alpha = 0.2)+
-  geom_point(aes(y = High, color = "High"))+
-  geom_smooth(aes(y = High, color = "High", fill = "High"), alpha = 0.2)+
-  geom_point(aes(y = Observed, color = "Observed"))+
-  geom_smooth(aes(y = Observed, color = "Observed"), alpha = 0.2)+
+  geom_smooth(aes(y = Varied, color = "Varied", fill = "Varied"), alpha = 0.2,
+              size = 1.5)+
+  geom_point(aes(y = Low, color = "Low"), size = 3)+
+  geom_smooth(aes(y = Low, color = "Low", fill = "Low"), alpha = 0.2, size = 1.5)+
+  geom_point(aes(y = Mid, color = "Mid"), size = 3)+
+  geom_smooth(aes(y = Mid, color = "Mid", fill = "Mid"), alpha = 0.2, size = 1.5)+
+  geom_point(aes(y = High, color = "High"), size = 3)+
+  geom_smooth(aes(y = High, color = "High", fill = "High"), alpha = 0.2, size = 1.5)+
+  geom_point(aes(y = Observed, color = "Observed"), size = 3)+
+  geom_smooth(aes(y = Observed, color = "Observed"), alpha = 0.2, size = 1.5)+
   scale_color_viridis_d()+
   scale_fill_viridis_d(guide = F)+
   labs(x = "Sites (Ranked)", y = "Abundance")+
   theme_bw()+
-  theme(legend.title = element_blank())
+  theme(legend.title = element_blank(), axis.title = element_text(size = 22), 
+        axis.text = element_text(size = 16), panel.grid = element_blank(),
+        legend.text = element_text(size = 18))
+
+# ggsave(file = "abundbysite.jpeg", scale = 1.5)
 
 #Are there differences between estimates?
 abund.melt <- gather(abunds, c(True, Varied:Observed), key = "Source", value = "Abund")
@@ -252,7 +258,7 @@ summary(abund.aov) #Mostly varies between sites but det plays a role
 abund.diffs <- HSD.test(y = abund.aov, trt = "Source")
 abund.diffs$groups #Observed is different than true, all others not sig. different
 
-# Model evaluation: covariate significance -----------------------------------
+# Model evaluation: covariate significance (a1) -----------------------------------
 get.a1 <- function(x){
   y <- x$sims.list$a1
   y2 <- as.data.frame(y)
@@ -284,16 +290,144 @@ all.a1 %>%
                     quant975 = quantile(a1, 0.975)) %>%
                     {. ->> sum.a1}
 
-ggplot(data = sum.a1, aes(x = Species, color = Source))+
-  geom_point(aes(y = mean))+
-  geom_errorbar(aes(ymin = quant025, ymax = quant975))+
+a1plot <- ggplot(data = sum.a1, aes(x = factor(Species, as.character(c(1:10))), 
+                                    color = Source))+
+  geom_point(aes(y = mean), position = position_dodge(0.6), size = 3)+
+  geom_errorbar(aes(ymin = quant025, ymax = quant975), position = position_dodge(0.6),
+                size = 1.5)+
   scale_color_viridis_d()+
-  geom_hline(aes(yintercept = 0), linetype = "dashed")+
-  geom_hline(aes(yintercept = -1), linetype = "dashed", color = "red")+
-  labs(y = "Alpha 1")+
+  geom_hline(aes(yintercept = 0), linetype = "dashed", size = 1.5)+
+  geom_hline(aes(yintercept = -1), linetype = "dashed", color = "red", size = 1.5)+
+  labs(y = "Alpha 1", x = "Species")+
   theme_bw()+
-  theme(axis.title.x = element_blank())
+  theme(legend.title = element_blank(), legend.text = element_text(size = 18),
+        axis.title = element_text(size = 22), axis.text = element_text(size = 16),
+        panel.grid = element_blank(), axis.text.x = element_blank(), 
+        axis.title.x = element_blank())
+
+# Model evaluation: covariate significance (a2) ------------------------------
+get.a2 <- function(x){
+  y <- x$sims.list$a2
+  y2 <- as.data.frame(y)
+  colnames(y2) <- c(1:10)
+  return(y2)
+}
+
+range.a2 <- get.a2(rangedmod)
+lo.a2 <- get.a2(lomod)
+mid.a2 <- get.a2(midmod)
+hi.a2 <- get.a2(himod)
+
+long.a2 <- function(x, source){
+  y <- gather(x, key = "Species", value = "a2")
+  y$Source = source
+  return(y)
+}
+
+range.a2.long <- long.a2(x = range.a2, source = "Varied")
+lo.a2.long <- long.a2(x = lo.a2, source = "Low")
+mid.a2.long <- long.a2(x = mid.a2, source = "Mid")
+hi.a2.long <- long.a2(x = hi.a2, source = "High")
+
+all.a2 <- as.data.frame(rbind(range.a2.long, lo.a2.long, mid.a2.long, hi.a2.long))
+
+all.a2 %>%
+  group_by(Source, Species)%>%
+  summarise(mean = mean(a2), quant025 = quantile(a2, 0.025), 
+            quant975 = quantile(a2, 0.975)) %>%
+  
+            {. ->> sum.a2}
+
+a2plot <- ggplot(data = sum.a2, aes(x = factor(Species, as.character(c(1:10))), 
+                                    color = Source))+
+  geom_point(aes(y = mean), position = position_dodge(0.6), size = 2)+
+  geom_errorbar(aes(ymin = quant025, ymax = quant975), position = position_dodge(0.6),
+                size = 1.5)+
+  geom_errorbar(aes(x = rep(1:10,4), ymin = rep(alpha2,4), ymax = rep(alpha2,4)), 
+                color = "red", linetype = "dashed", size = 1.5)+
+  scale_color_viridis_d()+
+  geom_hline(aes(yintercept = 0), linetype = "dashed", size = 1.5)+
+  labs(y = "Alpha 2", x = "Species")+
+  theme_bw()+
+  theme(legend.title = element_blank(), axis.title = element_text(size = 22), 
+        axis.text = element_text(size = 16), legend.text = element_text(size = 18),
+        panel.grid = element_blank(), axis.title.x = element_blank(),
+        axis.text.x = element_blank())
+
+# Model evaluation: covariate significance (b1) -------------------------------
+get.b1 <- function(x){
+  y <- x$sims.list$b1
+  y2 <- as.data.frame(y)
+  colnames(y2) <- c(1:10)
+  return(y2)
+}
+
+range.b1 <- get.b1(rangedmod)
+lo.b1 <- get.b1(lomod)
+mid.b1 <- get.b1(midmod)
+hi.b1 <- get.b1(himod)
+
+long.b1 <- function(x, source){
+  y <- gather(x, key = "Species", value = "b1")
+  y$Source = source
+  return(y)
+}
+
+range.b1.long <- long.b1(x = range.b1, source = "Varied")
+lo.b1.long <- long.b1(x = lo.b1, source = "Low")
+mid.b1.long <- long.b1(x = mid.b1, source = "Mid")
+hi.b1.long <- long.b1(x = hi.b1, source = "High")
+
+all.b1 <- as.data.frame(rbind(range.b1.long, lo.b1.long, mid.b1.long, hi.b1.long))
+
+all.b1 %>%
+  group_by(Source, Species)%>%
+  summarise(mean = mean(b1), quant025 = quantile(b1, 0.025), 
+            quant975 = quantile(b1, 0.975)) %>%
+  
+            {. ->> sum.b1}
+
+b1plot <- ggplot(data = sum.b1, aes(x = factor(Species, as.character(c(1:10))), 
+                                    color = Source))+
+  geom_point(aes(y = mean), position = position_dodge(0.6), size = 2)+
+  geom_errorbar(aes(ymin = quant025, ymax = quant975), position = position_dodge(0.6),
+                size = 1.5)+
+  geom_errorbar(aes(x = rep(1:10,4), ymin = rep(beta1,4), ymax = rep(beta1,4)), 
+                color = "red", linetype = "dashed", size = 1.5)+
+  scale_color_viridis_d()+
+  geom_hline(aes(yintercept = 0), linetype = "dashed", size = 1.5)+
+  labs(y = "Beta 1", x = "Species")+
+  theme_bw()+
+  theme(legend.title = element_blank(), axis.title = element_text(size = 22), 
+        axis.text = element_text(size = 16), legend.text = element_text(size = 18),
+        panel.grid = element_blank())
+
+covplots <- ggarrange(a1plot, a2plot, b1plot, nrow = 3, common.legend = T, 
+                      legend = "right")
+
+# ggsave(covplots, file = "covplots.jpeg", scale = 2)
   
 # Model evaluation: relationship between true and estimated data -------------
+columns <- c(3:7)
 
+lms <- list()
 
+for(i in 1:length(columns)){
+  lms[[i]] <- lm(abunds[,columns[i]]~abunds$True)
+}
+
+lapply(lms, summary) #Slopes look close to 1
+
+ggplot(data = abunds, aes(x = True))+
+  geom_smooth(aes(y = Varied, color = "Varied"), size = 1.5)+
+  geom_smooth(aes(y = Low, color = "Low"), size = 1.5)+
+  geom_smooth(aes(y = Mid, color = "Mid"), size = 1.5)+
+  geom_smooth(aes(y = High, color = "High"), size = 1.5)+
+  scale_color_viridis_d(name = "Detection")+
+  labs(x = "True Abundance", y = "Estimated Abundance")+
+  theme_bw()+
+  theme(axis.title = element_text(size = 22), axis.text = element_text(size = 16),
+        legend.title = element_text(size = 22), legend.text = element_text(size = 18),
+        panel.grid = element_blank())
+
+ggsave(file = "linearplot.jpeg", scale = 1.5)
